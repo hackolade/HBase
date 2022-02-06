@@ -28,6 +28,15 @@
 	},
 	{
 		"lowerTab": "Authentication",
+		"helpUrl": [
+			{
+				"value": "https://hackolade.com/help/Kerberos2.html",
+				"dependency": {
+					"key": "auth",
+					"value": "kerberos"
+				}
+			}
+		],
 		"structure": [
 			{
 				"inputLabel": "Authentication",
