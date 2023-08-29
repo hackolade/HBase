@@ -92,32 +92,19 @@ making sure that you maintain a proper JSON format.
 				"propertyName": "Data block encoding",
 				"propertyKeyword": "dataBlockEncoding",
 				"propertyType": "select",
-				"options": [
-					"NONE",
-					"PREFIX",
-					"DIFF",
-					"FAST_DIFF",
-					"PREFIX_TREE"
-				]
+				"options": ["NONE", "PREFIX", "DIFF", "FAST_DIFF", "PREFIX_TREE"]
 			},
 			{
 				"propertyName": "Bloomfilter",
 				"propertyKeyword": "bloomfilter",
 				"propertyType": "select",
-				"options": [
-					"NONE",
-					"ROW",
-					"ROWCOL"
-				]
+				"options": ["NONE", "ROW", "ROWCOL"]
 			},
 			{
 				"propertyName": "Replication scope",
 				"propertyKeyword": "replicationScope",
 				"propertyType": "select",
-				"options": [
-					"0",
-					"1"
-				]
+				"options": ["0", "1"]
 			},
 			{
 				"propertyName": "Versions",
@@ -131,13 +118,7 @@ making sure that you maintain a proper JSON format.
 				"propertyName": "Compression",
 				"propertyKeyword": "compression",
 				"propertyType": "select",
-				"options": [
-					"NONE",
-					"SNAPPY",
-					"LZO",
-					"LZ4",
-					"GZ"
-				]
+				"options": ["NONE", "SNAPPY", "LZO", "LZ4", "GZ"]
 			},
 			{
 				"propertyName": "Time-to-Live",
@@ -208,10 +189,12 @@ making sure that you maintain a proper JSON format.
 				"propertyType": "text",
 				"arrayItemDisabled": true,
 				"enableForReference": true,
-				"disabledOnCondition": [{
+				"disabledOnCondition": [
+					{
 						"key": "key",
 						"value": true
-					}, {
+					},
+					{
 						"key": "documentKind",
 						"value": true
 					}

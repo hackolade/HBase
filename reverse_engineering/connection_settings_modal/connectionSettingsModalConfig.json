@@ -7,7 +7,6 @@
 				"inputKeyword": "name",
 				"inputType": "text",
 				"inputPlaceholder": "Name"
-				
 			},
 			{
 				"inputLabel": "Host",
@@ -42,13 +41,16 @@
 				"inputLabel": "Authentication",
 				"inputKeyword": "auth",
 				"inputType": "select",
-				"options": [{
-					"value": "none",
-					"label": "None"
-				}, {
-					"value": "kerberos",
-					"label": "Kerberos"
-				}],
+				"options": [
+					{
+						"value": "none",
+						"label": "None"
+					},
+					{
+						"value": "kerberos",
+						"label": "Kerberos"
+					}
+				],
 				"defaultValue": "none"
 			},
 			{
@@ -109,6 +111,6 @@
 					"value": true
 				}
 			}
-		]	
+		]
 	}
 ]

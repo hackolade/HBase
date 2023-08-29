@@ -90,9 +90,7 @@ making sure that you maintain a proper JSON format.
 				"shouldValidate": false,
 				"propertyTooltip": "DB vendor",
 				"propertyType": "select",
-				"options": [
-					"HBase"
-				],
+				"options": ["HBase"],
 				"disabledOption": true
 			},
 			{
@@ -101,12 +99,7 @@ making sure that you maintain a proper JSON format.
 				"shouldValidate": false,
 				"propertyTooltip": "DB version",
 				"propertyType": "select",
-				"options": [
-					"1.1.x",
-					"1.2.x",
-					"1.3.x",
-					"2.0.x"
-				],
+				"options": ["1.1.x", "1.2.x", "1.3.x", "2.0.x"],
 				"disabledOption": false
 			},
 			{

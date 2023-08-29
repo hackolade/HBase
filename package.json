@@ -25,5 +25,29 @@
 			"enableForwardEngineering": true
 		}
 	},
-	"description": "Hackolade plugin for Apache HBase"
+	"description": "Hackolade plugin for Apache HBase",
+	"scripts": {
+		"lint": "eslint . --max-warnings=0",
+		"package": "node esbuild.package.js"
+	},
+	"dependencies": {
+		"node-fetch": "3.3.2"
+	},
+	"devDependencies": {
+		"esbuild": "0.19.2",
+		"eslint": "8.48.0",
+		"eslint-config-prettier": "9.0.0",
+		"eslint-plugin-prettier": "5.0.0",
+		"fs-extra": "11.1.1",
+		"lint-staged": "14.0.1",
+		"prettier": "3.0.2",
+		"simple-git-hooks": "2.9.0"
+	},
+	"lint-staged": {
+		"*.{js,json}": "prettier --write"
+	},
+	"simple-git-hooks": {
+		"pre-commit": "npx lint-staged",
+		"pre-push": "npx eslint ."
+	}
 }
