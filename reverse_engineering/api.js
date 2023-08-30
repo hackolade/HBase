@@ -306,8 +306,8 @@ function getRequestOptions(data, logger) {
 				let agent = null;
 
 				const isCertsPresent = certs.ca || certs.cert || certs.key;
-				if (!isCertsPresent) {
-					agent = https.Agent(certs);
+				if (isCertsPresent) {
+					agent = new https.Agent(certs);
 				}
 
 				if (clientKrb) {
