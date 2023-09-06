@@ -1,6 +1,5 @@
 const path = require('path');
 
-const BUILD_FOLDER_PATH = path.resolve(__dirname, 'build');
 const DEFAULT_RELEASE_FOLDER_PATH = path.resolve(__dirname, 'release');
 
 const EXCLUDED_EXTENSIONS = ['.js', '.g4', '.interp', '.tokens'];
@@ -24,7 +23,6 @@ const EXCLUDED_FILES = [
 ];
 
 module.exports = {
-	BUILD_FOLDER_PATH,
 	DEFAULT_RELEASE_FOLDER_PATH,
 	EXCLUDED_EXTENSIONS,
 	EXCLUDED_FILES,

@@ -1,7 +1,8 @@
-const esbuild = require('esbuild');
-const path = require('path');
 const fs = require('fs');
-const { copyFiles, addReleaseFlag, cleanPackageFolder } = require('./esbuildPlugins');
+const path = require('path');
+const esbuild = require('esbuild');
+const { clean } = require('esbuild-plugin-clean');
+const { copyFolderFiles, addReleaseFlag } = require('@hackolade/hck-esbuild-plugins-pack');
 const { EXCLUDED_EXTENSIONS, EXCLUDED_FILES, DEFAULT_RELEASE_FOLDER_PATH } = require('./buildConstants');
 
 const packageData = JSON.parse(fs.readFileSync('./package.json').toString());
@@ -21,8 +22,11 @@ esbuild
 		minify: true,
 		logLevel: 'info',
 		plugins: [
-			cleanPackageFolder(DEFAULT_RELEASE_FOLDER_PATH),
-			copyFiles({
+			clean({
+				patterns: [DEFAULT_RELEASE_FOLDER_PATH],
+			}),
+			copyFolderFiles({
+				fromPath: __dirname,
 				targetFolderPath: RELEASE_FOLDER_PATH,
 				excludedExtensions: EXCLUDED_EXTENSIONS,
 				excludedFiles: EXCLUDED_FILES,
