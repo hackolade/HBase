@@ -1,44 +1,53 @@
 'use strict';
 
-const async = require('async');
-const _ = require('lodash');
 const https = require('https');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const versions = require('../package.json').contributes.target.versions;
 const colFamConfig = require('./columnFamilyConfig');
 const kerberosService = require('./kerberosService');
-var state = {
-	connectionInfo: {}
+let state = {
+	connectionInfo: {},
 };
-var clientKrb = null;
-const DEFAULT_NAMESPACE = 'No Namespace'
+let clientKrb = null;
+const DEFAULT_NAMESPACE = 'No Namespace';
 
 module.exports = {
-	connect: function(connectionInfo, logger, cb, app){
+	connect: function (connectionInfo, logger, cb, app) {
 		const kerberos = app.require('kerberos');
 		logger.log('info', connectionInfo, 'Connection information', connectionInfo.hiddenKeys);
 
-		let options = setAuthData({
-			host: connectionInfo.host,
-			port: connectionInfo.port
-		}, connectionInfo);
-		
-		if(!clientKrb && options.krb5){
-			logger.log('info', Object.assign({}, options.krb5, { platform: process.platform }), 'Kerberos options', connectionInfo.hiddenKeys);
+		let options = setAuthData(
+			{
+				host: connectionInfo.host,
+				port: connectionInfo.port,
+			},
+			connectionInfo,
+		);
 
-			kerberosService({ kerberos }).getClient(options.krb5)
-				.then(client => {
-					clientKrb = client;
-					return cb();
-				}, err => cb(err));
+		if (!clientKrb && options.krb5) {
+			logger.log(
+				'info',
+				Object.assign({}, options.krb5, { platform: process.platform }),
+				'Kerberos options',
+				connectionInfo.hiddenKeys,
+			);
+
+			kerberosService({ kerberos })
+				.getClient(options.krb5)
+				.then(
+					client => {
+						clientKrb = client;
+						return cb();
+					},
+					err => cb(err),
+				);
 		} else {
 			return cb();
 		}
 	},
 
-	disconnect: function(cb){
-		client = null;
+	disconnect: function (cb) {
 		state.connectionInfo = {};
 		if (clientKrb) {
 			clientKrb.destroy(cb);
@@ -47,150 +56,212 @@ module.exports = {
 		}
 	},
 
-	testConnection: function(connectionInfo, logger, cb, app){
-		logger.clear();
-		
-		this.connect(connectionInfo, logger, err => {
-			if(err){
-				logger.log('error', err, 'Test connection', connectionInfo.hiddenKeys);
-				return cb(err);
-			}
-
-			getClusterVersion(connectionInfo, logger).then(version => {
-				return cb();
-			})
-			.catch(err => {
-				return logError(logger, cb)(err, 'Test connection', connectionInfo.hiddenKeys);
-			});
-		}, app);
-	},
-
-	getDbCollectionsNames: function(connectionInfo, logger, cb, app) {
+	testConnection: function (connectionInfo, logger, cb, app) {
 		logger.clear();
 
-		this.connect(connectionInfo, logger, err => {
-			if(err){
-				return logError(logger, cb)(err, 'Connection error', connectionInfo.hiddenKeys);
-			}
-			state.connectionInfo = connectionInfo;
+		this.connect(
+			connectionInfo,
+			logger,
+			err => {
+				if (err) {
+					logger.log('error', err, 'Test connection', connectionInfo.hiddenKeys);
+					return cb(err);
+				}
 
-			getNamespacesList(connectionInfo, logger).then(namespaces => {
-				async.mapSeries(namespaces, (namespace, callback) => {
-					getTablesList(connectionInfo, namespace, logger)
-						.then(res => {
-							return callback(null, res);
-						}, (err) => {
-							return callback(err);
-						});
-				}, (err, items) => {
-					if (err) {
-						return logError(logger, cb)(err, 'Get tables names error', connectionInfo.hiddenKeys);
-					}
-
-					items = prepareDataItems(namespaces, items);
-
-					return cb(err, items);
-				});
-			})
-			.catch(err => {
-				logError(logger, cb)(err, 'Get tables names error', connectionInfo.hiddenKeys);
-			});
-		}, app);
+				getClusterVersion(connectionInfo, logger)
+					.then(version => {
+						return cb();
+					})
+					.catch(err => {
+						return logError(logger, cb)(err, 'Test connection', connectionInfo.hiddenKeys);
+					});
+			},
+			app,
+		);
 	},
 
-	getDbCollectionsData: function(data, logger, cb){
+	getDbCollectionsNames: function (connectionInfo, logger, cb, app) {
+		const async = app.require('async');
+
+		logger.clear();
+
+		this.connect(
+			connectionInfo,
+			logger,
+			err => {
+				if (err) {
+					return logError(logger, cb)(err, 'Connection error', connectionInfo.hiddenKeys);
+				}
+				state.connectionInfo = connectionInfo;
+
+				getNamespacesList(connectionInfo, logger)
+					.then(namespaces => {
+						async.mapSeries(
+							namespaces,
+							(namespace, callback) => {
+								getTablesList(connectionInfo, namespace, logger).then(
+									res => {
+										return callback(null, res);
+									},
+									err => {
+										return callback(err);
+									},
+								);
+							},
+							(err, items) => {
+								if (err) {
+									return logError(logger, cb)(
+										err,
+										'Get tables names error',
+										connectionInfo.hiddenKeys,
+									);
+								}
+
+								items = prepareDataItems(namespaces, items);
+
+								return cb(err, items);
+							},
+						);
+					})
+					.catch(err => {
+						logError(logger, cb)(err, 'Get tables names error', connectionInfo.hiddenKeys);
+					});
+			},
+			app,
+		);
+	},
+
+	getDbCollectionsData: function (data, logger, cb, app) {
+		const async = app.require('async');
 		let { recordSamplingSettings, fieldInference, includeEmptyCollection } = data;
 		let namespaces = data.collectionData.dataBaseNames;
-		let info = { 
+		let info = {
 			host: state.connectionInfo.host,
-			port: Number(state.connectionInfo.port)
+			port: Number(state.connectionInfo.port),
 		};
 
-		async.map(namespaces, (namespace, callback) => {
-			let tables = data.collectionData.collections[namespace];
+		async.map(
+			namespaces,
+			(namespace, callback) => {
+				let tables = data.collectionData.collections[namespace];
 
-			if(!tables){
-				let documentsPackage = {
-					dbName: namespace,
-					emptyBucket: true
-				};
-				return callback(null, documentsPackage);
-			} else {
-				async.mapSeries(tables, (table, tableCallback) => {
-					let currentSchema;
+				if (!tables) {
 					let documentsPackage = {
-						dbName: namespace
+						dbName: namespace,
+						emptyBucket: true,
 					};
-					logger.progress({ message: 'Start getting version of cluster', containerName: namespace, entityName: table });
-					getClusterVersion(state.connectionInfo)
-						.then(version => {
-							logger.progress({ message: 'Version of cluster: ' + version, containerName: namespace, entityName: table });
+					return callback(null, documentsPackage);
+				} else {
+					async.mapSeries(
+						tables,
+						(table, tableCallback) => {
+							let currentSchema;
+							let documentsPackage = {
+								dbName: namespace,
+							};
+							logger.progress({
+								message: 'Start getting version of cluster',
+								containerName: namespace,
+								entityName: table,
+							});
+							getClusterVersion(state.connectionInfo)
+								.then(version => {
+									logger.progress({
+										message: 'Version of cluster: ' + version,
+										containerName: namespace,
+										entityName: table,
+									});
 
-							info.version = handleVersion(version, versions) || '';
+									info.version = handleVersion(version, versions) || '';
 
-							logger.progress({ message: 'Start getting schema of table', containerName: namespace, entityName: table });
+									logger.progress({
+										message: 'Start getting schema of table',
+										containerName: namespace,
+										entityName: table,
+									});
 
-							return getTableSchema(namespace, table, state.connectionInfo)
-						})
-						.then(schema => {
-							logger.progress({ message: 'Schema has successfully got!', containerName: namespace, entityName: table });
-							logger.progress({ message: 'Start getting documents', containerName: namespace, entityName: table });
+									return getTableSchema(namespace, table, state.connectionInfo);
+								})
+								.then(schema => {
+									logger.progress({
+										message: 'Schema has successfully got!',
+										containerName: namespace,
+										entityName: table,
+									});
+									logger.progress({
+										message: 'Start getting documents',
+										containerName: namespace,
+										entityName: table,
+									});
 
-							currentSchema = schema;
-							return scanDocuments(namespace, table, recordSamplingSettings, state.connectionInfo);
-						})
-						.then(rows => {
-							logger.progress({ message: 'Documents have successfully got!', containerName: namespace, entityName: table });
+									currentSchema = schema;
+									return scanDocuments(
+										namespace,
+										table,
+										recordSamplingSettings,
+										state.connectionInfo,
+									);
+								})
+								.then(rows => {
+									logger.progress({
+										message: 'Documents have successfully got!',
+										containerName: namespace,
+										entityName: table,
+									});
 
-							documentsPackage.collectionName = table;
+									documentsPackage.collectionName = table;
 
-							if(rows.length){
-								let handledRows = handleRows(rows);
-								let customSchema = setColumnProps(handledRows.schema, currentSchema);
+									if (rows.length) {
+										let handledRows = handleRows(rows);
+										let customSchema = setColumnProps(handledRows.schema, currentSchema);
 
-								if(fieldInference.active === 'field'){
-									documentsPackage.documentTemplate = handledRows.documents[0];
-								}
+										if (fieldInference.active === 'field') {
+											documentsPackage.documentTemplate = handledRows.documents[0];
+										}
 
-								documentsPackage.documents = handledRows.documents;
-								documentsPackage.validation = {
-									jsonSchema: customSchema
-								}
-							} else if (currentSchema) {
-								let customSchema = setColumnProps({ properties: {} }, currentSchema);
-								documentsPackage.documents = [];
-								documentsPackage.validation = {
-									jsonSchema: customSchema
-								};
-							} else if(includeEmptyCollection){
-								documentsPackage.documents = [];
-							} else {
-								documentsPackage = null;
+										documentsPackage.documents = handledRows.documents;
+										documentsPackage.validation = {
+											jsonSchema: customSchema,
+										};
+									} else if (currentSchema) {
+										let customSchema = setColumnProps({ properties: {} }, currentSchema);
+										documentsPackage.documents = [];
+										documentsPackage.validation = {
+											jsonSchema: customSchema,
+										};
+									} else if (includeEmptyCollection) {
+										documentsPackage.documents = [];
+									} else {
+										documentsPackage = null;
+									}
+
+									return tableCallback(null, documentsPackage);
+								})
+								.catch(err => {
+									return tableCallback(err, []);
+								});
+						},
+						(err, items) => {
+							if (!err) {
+								items = items.filter(item => item);
 							}
-
-							return tableCallback(null, documentsPackage);
-						})
-						.catch(err => {
-							return tableCallback(err, []);
-						});
-				}, (err, items) => {
-					if(!err){
-						items = items.filter(item => item);
-					}
-					return callback(err, items);
-				});
-			}
-		}, (err, res) => {
-			if (err) {
-				return logError(logger, cb)(err, 'Get data error', state.connectionInfo.hiddenKeys);
-			} else {
-				return cb(err, res, info);
-			}
-		});
-	}
+							return callback(err, items);
+						},
+					);
+				}
+			},
+			(err, res) => {
+				if (err) {
+					return logError(logger, cb)(err, 'Get data error', state.connectionInfo.hiddenKeys);
+				} else {
+					return cb(err, res, info);
+				}
+			},
+		);
+	},
 };
 
-function getHostURI(connectionInfo){
+function getHostURI(connectionInfo) {
 	const protocol = connectionInfo.https ? 'https' : 'http';
 	let query = `${protocol}://${connectionInfo.host}:${connectionInfo.port}`;
 	return query;
@@ -202,21 +273,21 @@ function getSslOptions(data) {
 			if (!data.https) {
 				return resolve(null);
 			}
-	
+
 			const certs = {};
-	
+
 			if (fs.existsSync(data.sslCaFile)) {
 				certs.ca = fs.readFileSync(data.sslCaFile);
 			}
-	
+
 			if (fs.existsSync(data.sslCertFile)) {
 				certs.cert = fs.readFileSync(data.sslCertFile);
 			}
-	
+
 			if (fs.existsSync(data.sslKeyFile)) {
 				certs.key = fs.readFileSync(data.sslKeyFile);
 			}
-	
+
 			return resolve(certs);
 		} catch (error) {
 			reject(error);
@@ -225,53 +296,56 @@ function getSslOptions(data) {
 }
 
 function getRequestOptions(data, logger) {
-	return getSslOptions(data)
-	.then(certs => new Promise((resolve, reject) => {
-		let headers = {
-			'Cache-Control': 'no-cache',
-			'Accept': 'application/json'
-		};
-		let agent = null;
+	return getSslOptions(data).then(
+		certs =>
+			new Promise((resolve, reject) => {
+				let headers = {
+					'Cache-Control': 'no-cache',
+					'Accept': 'application/json',
+				};
+				let agent = null;
 
-		if (!_.isEmpty(certs)) {
-			agent = https.Agent(certs);
-		}
-	
-		if (clientKrb) {
-			clientKrb.token((err, token) => {
-				if (err) {
-					return reject(err);
+				const isCertsPresent = certs.ca || certs.cert || certs.key;
+				if (isCertsPresent) {
+					agent = new https.Agent(certs);
 				}
 
-				if (logger) {
-					logger.log('info', { token });
-				}
+				if (clientKrb) {
+					clientKrb.token((err, token) => {
+						if (err) {
+							return reject(err);
+						}
 
-				headers.Authorization = `Negotiate ${token}`;
-	
-				resolve({
-					method: 'GET',
-					headers,
-					agent,
-				});
-			});
-		} else {
-			resolve({
-				method: 'GET',
-				headers: headers,
-				agent,
-			});
-		}
-	}));
+						if (logger) {
+							logger.log('info', { token });
+						}
+
+						headers.Authorization = `Negotiate ${token}`;
+
+						resolve({
+							method: 'GET',
+							headers,
+							agent,
+						});
+					});
+				} else {
+					resolve({
+						method: 'GET',
+						headers: headers,
+						agent,
+					});
+				}
+			}),
+	);
 }
 
-function fetchRequest(query, connectionInfo, logger){
+function fetchRequest(query, connectionInfo, logger) {
 	return getRequestOptions(connectionInfo, logger)
-		.then((options) => {
-			return fetch(query, options)
+		.then(options => {
+			return fetch(query, options);
 		})
 		.then(handleResponse)
-		.then(({ result, response}) => {
+		.then(({ result, response }) => {
 			return JSON.parse(result);
 		});
 }
@@ -280,68 +354,80 @@ const getTableNames = (connectionInfo, logger) => {
 	let query = `${getHostURI(connectionInfo)}/`;
 
 	return fetchRequest(query, connectionInfo, logger).then(res => {
-		return _.get(res, 'table', []).map(table => table.name);
+		return (res?.table || []).map(table => table.name);
 	});
 };
 
-const splitTableName = name => name.indexOf(':') !== -1 ? name.split(':') : ['', name];
+const splitTableName = name => (name.indexOf(':') !== -1 ? name.split(':') : ['', name]);
 
-const getNamespacesFromTables = (tables) => {
-	return Promise.resolve(_.uniq(tables.map((tableName) => splitTableName(tableName || '').shift())));
+const getNamespacesFromTables = tables => {
+	const allNames = tables.map(tableName => splitTableName(tableName || '').shift());
+	return Promise.resolve(allNames.filter((name, index, array) => array.indexOf(name) === index));
 };
 
-function getNamespacesList(connectionInfo, logger){
+function getNamespacesList(connectionInfo, logger) {
 	let query = `${getHostURI(connectionInfo)}/namespaces`;
 
-	return fetchRequest(query, connectionInfo, logger).then(res => {
-		return res.Namespace;
-	}, err => {
-		const areNamespacesNotAllowed = (err.code === 405);
+	return fetchRequest(query, connectionInfo, logger)
+		.then(
+			res => {
+				return res.Namespace;
+			},
+			err => {
+				const areNamespacesNotAllowed = err.code === 405;
 
-		if (areNamespacesNotAllowed) {
-			return getTableNames(connectionInfo, logger).then(getNamespacesFromTables);
-		} else {
-			return Promise.reject(err);
-		}
-	}).then(res => {
-		return res.filter(item => item !== 'hbase');
-	});
+				if (areNamespacesNotAllowed) {
+					return getTableNames(connectionInfo, logger).then(getNamespacesFromTables);
+				} else {
+					return Promise.reject(err);
+				}
+			},
+		)
+		.then(res => {
+			return res.filter(item => item !== 'hbase');
+		});
 }
 
-function getTablesList(connectionInfo, namespace, logger){
+function getTablesList(connectionInfo, namespace, logger) {
 	let query = `${getHostURI(connectionInfo)}/namespaces/${namespace}/tables`;
 
-	return fetchRequest(query, connectionInfo, logger).then(res => {
-		return res;
-	}, err => {
-		const areNamespacesNotAllowed = (err.code === 404);
+	return fetchRequest(query, connectionInfo, logger).then(
+		res => {
+			return res;
+		},
+		err => {
+			const areNamespacesNotAllowed = err.code === 404;
 
-		if (areNamespacesNotAllowed) {
-			return getTableNames(connectionInfo, logger).then(filterTables.bind(null, namespace)).then(tableNames => ({ table: tableNames }));
-		} else {
-			return Promise.reject(err);
-		}
-	});
+			if (areNamespacesNotAllowed) {
+				return getTableNames(connectionInfo, logger)
+					.then(filterTables.bind(null, namespace))
+					.then(tableNames => ({ table: tableNames }));
+			} else {
+				return Promise.reject(err);
+			}
+		},
+	);
 }
 
 const filterTables = (namespace, tableNames) => {
-	return tableNames.map(splitTableName)
-		.filter(([ namespaceName ]) => namespaceName === namespace)
+	return tableNames
+		.map(splitTableName)
+		.filter(([namespaceName]) => namespaceName === namespace)
 		.map(([ns, name]) => ({ name }));
 };
 
-function prepareDataItems(namespaces, items){
+function prepareDataItems(namespaces, items) {
 	return items.map((item, index) => {
 		return {
 			dbName: namespaces[index] || DEFAULT_NAMESPACE,
 			dbCollections: item.table.map(table => {
 				return table.name;
-			})
+			}),
 		};
-	}); 
+	});
 }
 
-function getTableSchema(namespace, table, connectionInfo){
+function getTableSchema(namespace, table, connectionInfo) {
 	let query = `${getHostURI(connectionInfo)}/${getNamespaceTableName(namespace, table)}/schema`;
 
 	return fetchRequest(query, connectionInfo).then(res => {
@@ -349,7 +435,7 @@ function getTableSchema(namespace, table, connectionInfo){
 	});
 }
 
-function getClusterVersion(connectionInfo, logger){
+function getClusterVersion(connectionInfo, logger) {
 	let query = `${getHostURI(connectionInfo)}/version/cluster`;
 
 	return fetchRequest(query, connectionInfo, logger).then(res => {
@@ -357,9 +443,10 @@ function getClusterVersion(connectionInfo, logger){
 	});
 }
 
-const getNamespaceTableName = (namespace, table) => (namespace && namespace !== DEFAULT_NAMESPACE) ? `${namespace}:${table}` : table;
+const getNamespaceTableName = (namespace, table) =>
+	namespace && namespace !== DEFAULT_NAMESPACE ? `${namespace}:${table}` : table;
 
-function handleRows(rows){
+function handleRows(rows) {
 	let data = {
 		hashTable: {},
 		documents: [],
@@ -368,14 +455,14 @@ function handleRows(rows){
 				'Row Key': {
 					type: 'string',
 					key: true,
-					pattern: '^[a-zA-Z0-9_.-]*$'
-				}
-			}
-		}
+					pattern: '^[a-zA-Z0-9_.-]*$',
+				},
+			},
+		},
 	};
 
 	rows.forEach(item => {
-		if(!data.hashTable.hasOwnProperty(item.key)){
+		if (!data.hashTable.hasOwnProperty(item.key)) {
 			let handledColumn = handleColumn(item, data.schema.properties);
 			data.schema.properties = handledColumn.schema;
 			data.documents.push(handledColumn.doc);
@@ -388,65 +475,67 @@ function handleRows(rows){
 		data.schema.properties = handledColumn.schema;
 	});
 
-	return data;	
+	return data;
 }
 
-function handleColumn(item, schema, doc = {}){
+function handleColumn(item, schema, doc = {}) {
 	let columnData = item.column.split(':');
 	let columnFamily = columnData[0];
 	let columnQualifier = columnData[1];
 
 	doc['Row Key'] = '';
 
-	if(!doc[columnFamily]){
+	if (!doc[columnFamily]) {
 		doc[columnFamily] = {};
 	}
 
-	if(!schema[columnFamily]){
+	if (!schema[columnFamily]) {
 		schema[columnFamily] = {
 			type: 'colFam',
-			properties: {}
+			properties: {},
 		};
 	}
 
-	if(!schema[columnFamily].properties[columnQualifier]){
+	if (!schema[columnFamily].properties[columnQualifier]) {
 		schema[columnFamily].properties[columnQualifier] = getColumnQualSchema(item);
 	}
 
-	doc[columnFamily][columnQualifier] = [{
-		'timestamp': item.timestamp + '',
-		value: getValue(item.$, schema[columnFamily].properties[columnQualifier])
-	}];
+	doc[columnFamily][columnQualifier] = [
+		{
+			'timestamp': item.timestamp + '',
+			value: getValue(item.$, schema[columnFamily].properties[columnQualifier]),
+		},
+	];
 
 	return { doc, schema };
 }
 
-function getColumnQualSchema(item){
+function getColumnQualSchema(item) {
 	return {
 		type: 'colQual',
 		items: {
 			type: 'object',
-			properties:{
+			properties: {
 				timestamp: {
 					type: 'string',
-					pattern: '^[0-9]+$'
+					pattern: '^[0-9]+$',
 				},
 				value: {
-					type: getValueType(item.$)
-				}
-			}
-		}
+					type: getValueType(item.$),
+				},
+			},
+		},
 	};
 }
 
-function getValueType(value){
+function getValueType(value) {
 	try {
 		value = JSON.parse(value);
 
-		switch(typeof value) {
+		switch (typeof value) {
 			case 'object':
 				if (value) {
-					return _.isArray(value) ? 'array' : 'object' 
+					return Array.isArray(value) ? 'array' : 'object';
 				} else {
 					return 'null';
 				}
@@ -459,13 +548,12 @@ function getValueType(value){
 			default:
 				return 'byte';
 		}
-
 	} catch (err) {
 		return 'byte';
 	}
 }
 
-function getValue(value, colQual){
+function getValue(value, colQual) {
 	let schemaValue = colQual.items.properties.value;
 
 	try {
@@ -477,17 +565,17 @@ function getValue(value, colQual){
 	}
 }
 
-function setColumnProps(customSchema, schema){
+function setColumnProps(customSchema, schema) {
 	schema.ColumnSchema.forEach(item => {
-		if (!customSchema.properties[item.name]){
+		if (!customSchema.properties[item.name]) {
 			customSchema.properties[item.name] = {
-				type: 'colFam'
+				type: 'colFam',
 			};
 		}
 
-		if(colFamConfig && colFamConfig.length){
+		if (colFamConfig && colFamConfig.length) {
 			colFamConfig.forEach(prop => {
-				switch(prop.propertyType){
+				switch (prop.propertyType) {
 					case 'number':
 						customSchema.properties[item.name][prop.propertyKeyword] = Number(item[prop.schemaKeyword]);
 						break;
@@ -504,29 +592,29 @@ function setColumnProps(customSchema, schema){
 	return customSchema;
 }
 
-function getBoolean(value){
+function getBoolean(value) {
 	return value === 'TRUE';
 }
 
-function handleVersion(version, versions){
+function handleVersion(version, versions) {
 	return versions.find(item => {
 		let sItem = item.split('');
 
 		sItem = sItem.map((item, index) => {
 			return item === 'x' ? version[index] : item;
 		});
-		return version	=== sItem.join('')	
-	})
+		return version === sItem.join('');
+	});
 }
 
-function setAuthData(options, connectionInfo){
+function setAuthData(options, connectionInfo) {
 	let authParams = {};
 
 	if (connectionInfo.auth === 'kerberos') {
 		authParams.krb5 = {
 			principal: connectionInfo.principal,
 			service_principal: 'HTTP' + (process.platform === 'win32' ? '/' : '@') + connectionInfo.host,
-			password: connectionInfo.password
+			password: connectionInfo.password,
 		};
 	}
 
@@ -535,26 +623,38 @@ function setAuthData(options, connectionInfo){
 	return options;
 }
 
-const handleResponse = (response) => {
-	return response.text()
-		.then(result => {
-			if (!response.ok) {
-				return Promise.reject({
-					message: response.statusText, code: response.status, description: result
-				});
-			}
+const handleResponse = response => {
+	return response.text().then(result => {
+		if (!response.ok) {
+			return Promise.reject({
+				message: response.statusText,
+				code: response.status,
+				description: result,
+			});
+		}
 
-			return {
-				response,
-				result
-			};			
-		})
+		return {
+			response,
+			result,
+		};
+	});
 };
 
-const getScannerBody = (recordSamplingSettings) => {
+const getScannerBody = recordSamplingSettings => {
 	const t = (size = 4) => ' '.repeat(size);
-	const getFilter = (filter) => {
-		return '\n' + t() + '<filter>\n' + t(2*4) + JSON.stringify(filter, null, 4).split('\n').join('\n' + t(2*4)) + '\n' + t() + '</filter>\n';
+	const getFilter = filter => {
+		return (
+			'\n' +
+			t() +
+			'<filter>\n' +
+			t(2 * 4) +
+			JSON.stringify(filter, null, 4)
+				.split('\n')
+				.join('\n' + t(2 * 4)) +
+			'\n' +
+			t() +
+			'</filter>\n'
+		);
 	};
 	let body = '<Scanner batch="1000">';
 
@@ -563,7 +663,7 @@ const getScannerBody = (recordSamplingSettings) => {
 
 		body += getFilter({
 			type: 'PageFilter',
-			value: size 
+			value: size,
 		});
 	}
 
@@ -592,40 +692,41 @@ const scanDocuments = (namespace, table, recordSamplingSettings, connectionInfo)
 		.then(query => getCells(connectionInfo, query));
 };
 
-const getCells = (connectionInfo, query, cells = []) => new Promise((resolve, reject) => {
-	return getRequestOptions(connectionInfo)
-		.then(options => {
-			return fetch(query, options);
-		})
-		.then(handleResponse)
-		.then(({ result, response }) => {
-			if (response.status === 204) {
-				resolve(cells);
-			} else {
-				const data = getRows(JSON.parse(result))
+const getCells = (connectionInfo, query, cells = []) =>
+	new Promise((resolve, reject) => {
+		return getRequestOptions(connectionInfo)
+			.then(options => {
+				return fetch(query, options);
+			})
+			.then(handleResponse)
+			.then(({ result, response }) => {
+				if (response.status === 204) {
+					resolve(cells);
+				} else {
+					const data = getRows(JSON.parse(result));
 
-				return getCells(connectionInfo, query, [ ...cells, ...data ]);
-			}
-		})
-		.then(resolve, reject);
-});
+					return getCells(connectionInfo, query, [...cells, ...data]);
+				}
+			})
+			.then(resolve, reject);
+	});
 
-const decodeBase64 = (str) => Buffer.from(str, 'base64').toString();
+const decodeBase64 = str => Buffer.from(str, 'base64').toString();
 
-const getRows = (data) => {
+const getRows = data => {
 	let cells = [];
 
-	data.Row.forEach((row) => {
+	data.Row.forEach(row => {
 		let key = decodeBase64(row.key, 'utf-8');
 
-		return row.Cell.forEach((cell) => {
-		  data = {};
-		  data.key = key;
-		  data.column = decodeBase64(cell.column, 'utf-8');
-		  data.timestamp = cell.timestamp;
-		  data.$ = decodeBase64(cell.$, 'utf-8');
+		return row.Cell.forEach(cell => {
+			data = {};
+			data.key = key;
+			data.column = decodeBase64(cell.column, 'utf-8');
+			data.timestamp = cell.timestamp;
+			data.$ = decodeBase64(cell.$, 'utf-8');
 
-		  return cells.push(data);
+			return cells.push(data);
 		});
 	});
 

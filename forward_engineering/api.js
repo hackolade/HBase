@@ -5,12 +5,12 @@ module.exports = {
 		try {
 			jsonSchema = JSON.parse(jsonSchema);
 		} catch (err) {
-			return cb(err)
+			return cb(err);
 		}
-		
+
 		let columnFailies = this.getColumnFamilies(jsonSchema.properties);
 		let script = `create '${entityData.collectionName.toLowerCase()}'`;
-		
+
 		columnFailies.forEach(item => {
 			script = `${script}, '${item}'`;
 		});
@@ -18,18 +18,18 @@ module.exports = {
 		return cb(null, script);
 	},
 
-	getColumnFamilies(props = {}){
+	getColumnFamilies(props = {}) {
 		let columnFamilies = [];
-		for(let prop in props){
-			if(props[prop] && props[prop].type === 'colFam'){
+		for (let prop in props) {
+			if (props[prop] && props[prop].type === 'colFam') {
 				columnFamilies.push(prop);
 			}
 		}
 
-		if(!columnFamilies.length){
+		if (!columnFamilies.length) {
 			columnFamilies.push('<columnFamily>');
 		}
 
 		return columnFamilies;
-	}
+	},
 };

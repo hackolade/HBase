@@ -1,18 +1,20 @@
 {
 	"name": "timestamp",
 	"parentType": "array",
-	"properties": [{
-		"type": "object",
-		"properties": [
-			{
-				"name": "timestamp",
-				"type": "string",
-				"format": "time"
-			},
-			{
-				"name": "value",
-				"type": "string"
-			}
-		]
-	}]
+	"properties": [
+		{
+			"type": "object",
+			"properties": [
+				{
+					"name": "timestamp",
+					"type": "string",
+					"format": "time"
+				},
+				{
+					"name": "value",
+					"type": "string"
+				}
+			]
+		}
+	]
 }
