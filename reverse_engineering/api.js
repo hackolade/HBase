@@ -2,6 +2,7 @@
 
 const https = require('https');
 const fs = require('fs');
+const async = require('async');
 const fetch = require('node-fetch');
 const versions = require('../package.json').contributes.target.versions;
 const colFamConfig = require('./columnFamilyConfig');
@@ -81,8 +82,6 @@ module.exports = {
 	},
 
 	getDbCollectionsNames: function (connectionInfo, logger, cb, app) {
-		const async = app.require('async');
-
 		logger.clear();
 
 		this.connect(
@@ -132,7 +131,6 @@ module.exports = {
 	},
 
 	getDbCollectionsData: function (data, logger, cb, app) {
-		const async = app.require('async');
 		let { recordSamplingSettings, fieldInference, includeEmptyCollection } = data;
 		let namespaces = data.collectionData.dataBaseNames;
 		let info = {
