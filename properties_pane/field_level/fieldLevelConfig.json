@@ -137,7 +137,7 @@ making sure that you maintain a proper JSON format.
 				"allowNegative": false
 			},
 			{
-				"propertyName": "Kepp deleted cells",
+				"propertyName": "Keep deleted cells",
 				"propertyKeyword": "keepDeletedCells",
 				"propertyType": "checkbox"
 			},
