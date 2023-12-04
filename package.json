@@ -50,6 +50,9 @@
     },
     "simple-git-hooks": {
         "pre-commit": "npx lint-staged",
-        "pre-push": "npx eslint ."
+        "pre-push": "npx eslint .",
+        "post-checkout": "./git-hooks/post-checkout",
+        "post-merge": "./git-hooks/post-merge",
+        "post-rewrite": "./git-hooks/post-rewrite"
     }
 }
