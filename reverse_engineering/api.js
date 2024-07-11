@@ -571,7 +571,7 @@ function setColumnProps(customSchema, schema) {
 			};
 		}
 
-		if (colFamConfig && colFamConfig.length) {
+		if (colFamConfig?.length) {
 			colFamConfig.forEach(prop => {
 				switch (prop.propertyType) {
 					case 'number':
@@ -715,14 +715,14 @@ const getRows = data => {
 	let cells = [];
 
 	data.Row.forEach(row => {
-		let key = decodeBase64(row.key, 'utf-8');
+		let key = decodeBase64(row.key);
 
 		return row.Cell.forEach(cell => {
 			data = {};
 			data.key = key;
-			data.column = decodeBase64(cell.column, 'utf-8');
+			data.column = decodeBase64(cell.column);
 			data.timestamp = cell.timestamp;
-			data.$ = decodeBase64(cell.$, 'utf-8');
+			data.$ = decodeBase64(cell.$);
 
 			return cells.push(data);
 		});
