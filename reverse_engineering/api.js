@@ -48,7 +48,7 @@ module.exports = {
 		}
 	},
 
-	disconnect: function (cb) {
+	disconnect: function (connectionInfo, logger, cb, app) {
 		state.connectionInfo = {};
 		if (clientKrb) {
 			clientKrb.destroy(cb);
