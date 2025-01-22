@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const esbuild = require('esbuild');
 const { clean } = require('esbuild-plugin-clean');
+const { copy } = require('esbuild-plugin-copy');
 const { copyFolderFiles, addReleaseFlag } = require('@hackolade/hck-esbuild-plugins-pack');
 const { EXCLUDED_EXTENSIONS, EXCLUDED_FILES, DEFAULT_RELEASE_FOLDER_PATH } = require('./buildConstants');
 
@@ -21,9 +22,34 @@ esbuild
 		outdir: RELEASE_FOLDER_PATH,
 		minify: true,
 		logLevel: 'info',
+		external: ['kerberos'],
 		plugins: [
 			clean({
 				patterns: [DEFAULT_RELEASE_FOLDER_PATH],
+			}),
+			copy({
+				assets: {
+					from: [path.join('node_modules', '@hackolade', 'kerberos-darwin-arm64', '**', '*')],
+					to: [path.join('node_modules', '@hackolade', 'kerberos-darwin-arm64')],
+				},
+			}),
+			copy({
+				assets: {
+					from: [path.join('node_modules', '@hackolade', 'kerberos-darwin-x64', '**', '*')],
+					to: [path.join('node_modules', '@hackolade', 'kerberos-darwin-x64')],
+				},
+			}),
+			copy({
+				assets: {
+					from: [path.join('node_modules', '@hackolade', 'kerberos-linux-x64', '**', '*')],
+					to: [path.join('node_modules', '@hackolade', 'kerberos-linux-x64')],
+				},
+			}),
+			copy({
+				assets: {
+					from: [path.join('node_modules', '@hackolade', 'kerberos-win32-x64', '**', '*')],
+					to: [path.join('node_modules', '@hackolade', 'kerberos-win32-x64')],
+				},
 			}),
 			copyFolderFiles({
 				fromPath: __dirname,
