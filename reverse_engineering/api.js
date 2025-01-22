@@ -1,21 +1,22 @@
-'use strict';
-
 const https = require('https');
 const fs = require('fs');
 const async = require('async');
 const fetch = require('node-fetch');
+const kerberos = require('@hackolade/kerberos');
 const versions = require('../package.json').contributes.target.versions;
 const colFamConfig = require('./columnFamilyConfig');
 const kerberosService = require('./kerberosService');
+
 let state = {
 	connectionInfo: {},
 };
+
 let clientKrb = null;
+
 const DEFAULT_NAMESPACE = 'No Namespace';
 
 module.exports = {
 	connect: function (connectionInfo, logger, cb, app) {
-		const kerberos = app.require('kerberos');
 		logger.log('info', connectionInfo, 'Connection information', connectionInfo.hiddenKeys);
 
 		let options = setAuthData(
