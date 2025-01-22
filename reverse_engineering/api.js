@@ -29,7 +29,7 @@ module.exports = {
 		if (!clientKrb && options.krb5) {
 			logger.log(
 				'info',
-				Object.assign({}, options.krb5, { platform: process.platform }),
+				{ ...options.krb5, platform: process.platform },
 				'Kerberos options',
 				connectionInfo.hiddenKeys,
 			);
@@ -606,7 +606,7 @@ function handleVersion(version, versions) {
 }
 
 function setAuthData(options, connectionInfo) {
-	let authParams = {};
+	const authParams = {};
 
 	if (connectionInfo.auth === 'kerberos') {
 		authParams.krb5 = {
@@ -616,9 +616,10 @@ function setAuthData(options, connectionInfo) {
 		};
 	}
 
-	options = Object.assign(options, authParams);
-
-	return options;
+	return {
+		...options,
+		...authParams,
+	};
 }
 
 const handleResponse = response => {
