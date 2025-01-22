@@ -57,10 +57,10 @@ module.exports = {
 		}
 	},
 
-	testConnection: function (connectionInfo, logger, cb, app) {
+	testConnection: async function (connectionInfo, logger, cb, app) {
 		logger.clear();
 
-		this.connect(
+		await this.connect(
 			connectionInfo,
 			logger,
 			err => {
@@ -81,10 +81,10 @@ module.exports = {
 		);
 	},
 
-	getDbCollectionsNames: function (connectionInfo, logger, cb, app) {
+	getDbCollectionsNames: async function (connectionInfo, logger, cb, app) {
 		logger.clear();
 
-		this.connect(
+		await this.connect(
 			connectionInfo,
 			logger,
 			err => {
