@@ -14,8 +14,8 @@ let clientKrb = null;
 const DEFAULT_NAMESPACE = 'No Namespace';
 
 module.exports = {
-	connect: function (connectionInfo, logger, cb, app) {
-		const kerberos = app.require('kerberos');
+	connect: async function (connectionInfo, logger, cb, app) {
+		const kerberos = await app.require('kerberos');
 		logger.log('info', connectionInfo, 'Connection information', connectionInfo.hiddenKeys);
 
 		let options = setAuthData(
