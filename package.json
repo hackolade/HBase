@@ -1,6 +1,6 @@
 {
     "name": "HBase",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "author": "hackolade",
     "engines": {
         "hackolade": "2.3.2",
@@ -28,7 +28,7 @@
     "scripts": {
         "lint": "eslint . --max-warnings=0",
         "package": "node esbuild.package.js",
-		"postinstall": "npx simple-git-hooks"
+        "postinstall": "npx simple-git-hooks"
     },
     "dependencies": {
         "async": "^3.2.4",
