@@ -14,8 +14,8 @@ let clientKrb = null;
 const DEFAULT_NAMESPACE = 'No Namespace';
 
 module.exports = {
-	connect: function (connectionInfo, logger, cb, app) {
-		const kerberos = app.require('kerberos');
+	connect: async function (connectionInfo, logger, cb, app) {
+		const kerberos = await app.require('kerberos');
 		logger.log('info', connectionInfo, 'Connection information', connectionInfo.hiddenKeys);
 
 		let options = setAuthData(
@@ -29,7 +29,7 @@ module.exports = {
 		if (!clientKrb && options.krb5) {
 			logger.log(
 				'info',
-				Object.assign({}, options.krb5, { platform: process.platform }),
+				{ ...options.krb5, platform: process.platform },
 				'Kerberos options',
 				connectionInfo.hiddenKeys,
 			);
@@ -57,10 +57,10 @@ module.exports = {
 		}
 	},
 
-	testConnection: function (connectionInfo, logger, cb, app) {
+	testConnection: async function (connectionInfo, logger, cb, app) {
 		logger.clear();
 
-		this.connect(
+		await this.connect(
 			connectionInfo,
 			logger,
 			err => {
@@ -81,10 +81,10 @@ module.exports = {
 		);
 	},
 
-	getDbCollectionsNames: function (connectionInfo, logger, cb, app) {
+	getDbCollectionsNames: async function (connectionInfo, logger, cb, app) {
 		logger.clear();
 
-		this.connect(
+		await this.connect(
 			connectionInfo,
 			logger,
 			err => {
@@ -606,7 +606,7 @@ function handleVersion(version, versions) {
 }
 
 function setAuthData(options, connectionInfo) {
-	let authParams = {};
+	const authParams = {};
 
 	if (connectionInfo.auth === 'kerberos') {
 		authParams.krb5 = {
@@ -616,9 +616,10 @@ function setAuthData(options, connectionInfo) {
 		};
 	}
 
-	options = Object.assign(options, authParams);
-
-	return options;
+	return {
+		...options,
+		...authParams,
+	};
 }
 
 const handleResponse = response => {
