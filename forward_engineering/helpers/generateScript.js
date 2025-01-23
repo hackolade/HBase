@@ -1,3 +1,5 @@
+const { getColumnFamilies } = require('./getColumnFamilies');
+
 function generateScript(data, logger, cb) {
 	const { entityData } = data;
 	let { jsonSchema } = data;
@@ -8,7 +10,7 @@ function generateScript(data, logger, cb) {
 		return cb(err);
 	}
 
-	const columnFamilies = this.getColumnFamilies(jsonSchema.properties);
+	const columnFamilies = getColumnFamilies(jsonSchema.properties);
 	let script = `create '${entityData.collectionName.toLowerCase()}'`;
 
 	columnFamilies.forEach(item => {
