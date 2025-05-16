@@ -1,3 +1,5 @@
+'use strict';
+
 const https = require('https');
 const fs = require('fs');
 const async = require('async');
@@ -14,6 +16,8 @@ const DEFAULT_NAMESPACE = 'No Namespace';
 module.exports = {
 	connect: async function (connectionInfo, logger, cb, app) {
 		const kerberos = await app.require('kerberos');
+		logger.log('info', connectionInfo, 'Connection information', connectionInfo.hiddenKeys);
+
 		let options = setAuthData(
 			{
 				host: connectionInfo.host,
@@ -54,6 +58,8 @@ module.exports = {
 	},
 
 	testConnection: async function (connectionInfo, logger, cb, app) {
+		logger.clear();
+
 		await this.connect(
 			connectionInfo,
 			logger,
@@ -76,6 +82,8 @@ module.exports = {
 	},
 
 	getDbCollectionsNames: async function (connectionInfo, logger, cb, app) {
+		logger.clear();
+
 		await this.connect(
 			connectionInfo,
 			logger,
