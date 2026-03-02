@@ -53,6 +53,6 @@
         "pre-push": "npm run lint"
     },
     "overrides": {
-        "minimatch": "10.2.1"
+        "minimatch": "10.2.4"
     }
 }
